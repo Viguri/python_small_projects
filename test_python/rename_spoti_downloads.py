@@ -2,13 +2,20 @@ import os
 import easygui
 import eyed3
 from mutagen.easyid3 import EasyID3
+from mutagen.id3 import ID3, ID3NoHeaderError
+from mutagen.aiff import AIFF
+
 
 def rename_mp3s():
     p = easygui.diropenbox()
-    #p = "/Users/viguri/Downloads/[SPOTIFY-DOWNLOADER.COM] Spook Factory Valencia"
+    #p = "G:/__DJ-ING/__NEW_RELEASES/New/New Exclusive Music – 144 Tracks Сollection March 2024 (Djsoundtop.Com)"
     q = p + "/"
     d = os.listdir(p)
-    s = "[SPOTIFY-DOWNLOADER.COM] "
+    text = input("inserta texto a eliminar: ")
+    t = print(text)
+
+    #s = "OG KAALA - "
+    s = text
     n = len(d)
     print(n)
 
@@ -28,13 +35,19 @@ def read_id3Tiny():
 
 def read_id3():
     #https://from-locals.com/python-mutagen-mp3-id3/
-    file = easygui.fileopenbox()
+    try:
+        file = easygui.fileopenbox()
+        tags = ID3(file)
+    except ID3NoHeaderError:
+        tags = ID3()    
+    
     tags = EasyID3(file)
     print(tags.pprint())
     
     for key in EasyID3.valid_keys.keys():
         print(key)
 
-read_id3()
+#read_id3()
+rename_mp3s()
     
 

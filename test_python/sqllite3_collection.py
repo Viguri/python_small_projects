@@ -4,7 +4,13 @@ import sqlite3
 from tkinter import filedialog, Tk
 
 # Function to extract Genre ID3 tag from audio files
+import os
+
 def extract_genre(file_path):
+    if not os.path.isfile(file_path) or not os.access(file_path, os.R_OK):
+        print(f"File {file_path} is not accessible.")
+        return None
+
     try:
         audio = mutagen.File(file_path)
         if audio:
@@ -56,7 +62,7 @@ def get_folder():
     return folder_path
 
 # Main function
-def main():
+""" def main():
     # Get the folder where the audio files are located
     directory = get_folder()
     if not directory:
@@ -69,13 +75,13 @@ def main():
     # Create and populate the database
     create_database(audio_files)
 
-    print("Database created successfully.")
+    print("Database created successfully.") """
 
 # Function to fetch data from the database
 def fetch_data():
     conn = sqlite3.connect('audio_genres.db')
     c = conn.cursor()
-    c.execute("SELECT * FROM AudioFiles")
+    c.execute("SELECT DISTINCT Genre FROM AudioFiles ORDER BY Genre ASC")
     data = c.fetchall()
     conn.close()
     return data
@@ -85,8 +91,9 @@ def main():
     data = fetch_data()
 
     # Print the fetched data
-    for row in data:
-        print(row)
+    with open('genres.txt', 'w', encoding='utf-8') as f:
+        for row in data:
+            print('Filename', row, file=f)
 
 if __name__ == "__main__":
     main()

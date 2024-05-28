@@ -1,0 +1,3 @@
+SELECT DISTINCT Genre 
+FROM AudioFiles
+ORDER BY Genre ASC

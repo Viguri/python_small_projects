@@ -1,5 +1,0 @@
-Total files: 2581
-Files found based on Genre: 1836
-Files skipped: 16
-Files not identified: 1158
-Elapsed Time: 692.63 seconds

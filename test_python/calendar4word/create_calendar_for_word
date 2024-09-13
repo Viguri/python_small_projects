@@ -1,0 +1,185 @@
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+import calendar
+from datetime import date, timedelta
+import os
+import win32com.client
+
+def create_year_calendar(year):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f'{year} Jahreskalender'
+    
+    month_names = ["Januar", "Februar", "März", "April", "Mai", "Juni",
+                   "Juli", "August", "September", "Oktober", "November", "Dezember"]
+    
+    week_days = ["KW", "Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    
+    orange_fill = PatternFill(start_color='FFA500', end_color='FFA500', fill_type='solid')
+    blue_fill = PatternFill(start_color='ADD8E6', end_color='ADD8E6', fill_type='solid')
+    light_orange_fill = PatternFill(start_color="FFD580", end_color="FFD580", fill_type="solid")
+    light_red_fill = PatternFill(start_color="FF9999", end_color="FF9999", fill_type="solid")
+    green_fill = PatternFill(start_color="99FF99", end_color="99FF99", fill_type="solid")
+    yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")  # Yellow fill
+    bold_font = Font(bold=True, size=9)
+    regular_font = Font(size=9)
+    thin_border = Border(left=Side(style='thin'), 
+                         right=Side(style='thin'), 
+                         top=Side(style='thin'), 
+                         bottom=Side(style='thin'))
+
+    # Define festive days for Zurich (Switzerland) 2025
+    festive_days = [
+        (date(2025, 1, 1), "Neujahrstag"),
+        (date(2025, 4, 18), "Karfreitag"),
+        (date(2025, 4, 21), "Ostermontag"),
+        (date(2025, 5, 1), "Tag der Arbeit"),
+        (date(2025, 5, 29), "Auffahrt"),
+        (date(2025, 6, 9), "Pfingstmontag"),
+        (date(2025, 8, 1), "Bundesfeier"),
+        (date(2025, 12, 25), "Weihnachtstag"),
+        (date(2025, 12, 26), "Stephanstag"),
+        # Zurich city local holidays
+        (date(2025, 1, 2), "Berchtoldstag"),
+        (date(2025, 4, 6), "Sechseläuten"),
+        (date(2025, 8, 1), "Nationalfeiertag"),
+        (date(2025, 9, 14), "Knabenschiessen")
+    ]
+
+    # Define school holidays for Herrliberg 2025
+    school_holidays = [
+        (date(2025, 2, 9), date(2025, 2, 20), "Winterferien"),
+        (date(2025, 4, 6), date(2025, 4, 17), "Frühlingsferien"),
+        (date(2025, 7, 13), date(2025, 8, 14), "Sommerferien"),
+        (date(2025, 10, 5), date(2025, 10, 16), "Herbstferien"),
+        (date(2025, 12, 21), date(2025, 12, 31), "Weihnachtsferien")
+    ]
+
+    # Fetch "PROBE" entries from Outlook calendar
+    try:
+        outlook = win32com.client.Dispatch("Outlook.Application")
+        namespace = outlook.GetNamespace("MAPI")
+        calendar_folder = namespace.Folders("iCloud").Folders("MCH")
+        items = calendar_folder.Items
+        items.IncludeRecurrences = True
+        items.Sort("[Start]")
+    except Exception as e:
+        print(f"Error accessing Outlook calendar: {e}")
+        return
+
+    probe_entries = []
+    for item in items:
+        if "PROBE" in item.Subject and item.Start.year == year:
+            probe_entries.append((item.Start.date(), item.Subject))
+
+    # Function to get the cell based on month index, week index, and day index
+    def get_cell_for_date(month_idx, week_idx, day_idx):
+        row = 3 + (month_idx // 3) * 8 + week_idx
+        col = 1 + (month_idx % 3) * 9 + day_idx
+        return ws.cell(row=row, column=col)
+
+    # Function to check if a date is within any of the school holidays
+    def is_school_holiday(check_date):
+        for start, end, _ in school_holidays:
+            if start <= check_date <= end:
+                return True
+        return False
+
+    # Set headers for each month's table
+    for i in range(12):
+        month_name_cell = get_cell_for_date(i, -1, 1)
+        month_name_cell.value = f'{month_names[i]}'
+        month_name_cell.font = bold_font
+        ws.merge_cells(start_row=month_name_cell.row, start_column=month_name_cell.column, end_row=month_name_cell.row, end_column=month_name_cell.column+7)
+
+        for j, header in enumerate(week_days):
+            header_cell = get_cell_for_date(i, 0, j)
+            header_cell.value = header
+            header_cell.font = bold_font
+            header_cell.border = thin_border
+            header_cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    for i in range(12):
+        cal = calendar.Calendar(firstweekday=0)
+        month_days = cal.monthdayscalendar(year, i + 1)
+
+        for week_idx, week in enumerate(month_days):
+            # Calculate the week number based on ISO calendar
+            first_day_of_week = None
+            for day_idx, day in enumerate(week):
+                if day != 0:
+                    first_day_of_week = date(year, i + 1, day)
+                    break
+            if first_day_of_week is not None:
+                week_number = first_day_of_week.isocalendar()[1]
+
+            week_number_cell = get_cell_for_date(i, week_idx + 1, 0)
+            week_number_cell.value = week_number
+            week_number_cell.fill = blue_fill
+            week_number_cell.border = thin_border
+            week_number_cell.font = regular_font
+            week_number_cell.alignment = Alignment(horizontal='center', vertical='center')
+            
+            for day_idx, day in enumerate(week):
+                if day != 0:
+                    cell = get_cell_for_date(i, week_idx + 1, day_idx + 1)
+                    cell.value = day
+                    cell.border = thin_border
+                    cell.font = regular_font
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                    current_date = date(year, i + 1, day)
+                    if any(current_date == festive_date for festive_date, _ in festive_days):
+                        cell.fill = light_red_fill
+                    elif is_school_holiday(current_date):
+                        cell.fill = green_fill
+                    elif day_idx == 5:  # Highlight Saturdays
+                        cell.fill = light_orange_fill
+                    elif day_idx == 6:  # Highlight Sundays
+                        cell.fill = orange_fill
+                    elif any(current_date == probe_date for probe_date, _ in probe_entries):
+                        cell.fill = yellow_fill  # Apply yellow fill for "PROBE" entries
+
+    # Adjust column widths and row heights on the main tab
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter  # Get the column name
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        ws.column_dimensions[column].width = adjusted_width
+
+    for row in ws.iter_rows():
+        ws.row_dimensions[row[0].row].height = 15
+
+    # Create a second tab for the list of festive days, school holidays, and "PROBE" entries
+    ws2 = wb.create_sheet(title="Feiertage und Ferien")
+    ws2.append(["Tag", "Monat", "Wochentag", "Beschreibung"])
+    ws2["A1"].font = bold_font
+    ws2["B1"].font = bold_font
+    ws2["C1"].font = bold_font
+    ws2["D1"].font = bold_font
+
+    for festive_date, description in festive_days:
+        ws2.append([festive_date.day, festive_date.strftime("%B"), festive_date.strftime("%a"), description])
+
+    for start_date, end_date, description in school_holidays:
+        current_date = start_date
+        while current_date <= end_date:
+            ws2.append([current_date.day, current_date.strftime("%B"), current_date.strftime("%a"), description])
+            current_date += timedelta(days=1)
+
+    for probe_date, description in probe_entries:
+        ws2.append([probe_date.day, probe_date.strftime("%B"), probe_date.strftime("%a"), "Probe"])
+
+    file_name = f'{year}_Jahreskalender.xlsx'
+    wb.save(file_name)
+
+    # Open the document
+    os.startfile(file_name)
+
+# Create the year calendar for 2025
+create_year_calendar(2025)

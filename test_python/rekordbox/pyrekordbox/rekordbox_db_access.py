@@ -1,5 +1,5 @@
-from pyrekordbox import show_config
 from pyrekordbox import Rekordbox6Database
+from pyrekordbox import show_config
 from pyrekordbox.db6 import tables
 
 show_config()
